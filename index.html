@@ -277,7 +277,7 @@
       </div>
     </section>
 
-    <!-- Live Tracking Result Band (Hidden on initial page load until searched) -->
+    <!-- Live Tracking Result Band (Hidden on initial page load until searched or clicked) -->
     <section id="tracking-result-section" class="hidden w-full px-4 sm:px-8 lg:px-12 py-8 bg-slate-50/80 border-b border-slate-200">
       <div id="tracking-result-card" class="w-full"></div>
     </section>
@@ -1069,7 +1069,7 @@
   </div>
 
   <!-- ===================================================================== -->
-  <!-- MODAL 1: UNIFIED STAFF / ADMIN LOGIN                                  -->
+  <!-- MODAL 1: UNIFIED STAFF / ADMIN LOGIN (No Default Hints)               -->
   <!-- ===================================================================== -->
   <div id="login-modal" class="fixed inset-0 bg-slate-950/65 z-50 hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md p-6 relative">
@@ -1227,8 +1227,7 @@
     (function () {
       const DEFAULT_LOGO_URL = "https://i.ibb.co/0pvQzGkV/NAMASTE-SEWARO-1.png";
       const DEFAULT_SUPABASE_URL = "https://oclwcpnxujcdqylukvbt.supabase.co";
-      // Replace with your legacy JWT anon key starting with "eyJ..." so fresh devices connect immediately
-      const DEFAULT_SUPABASE_KEY = "PASTE_YOUR_LEGACY_EYJ_ANON_KEY_HERE";
+      const DEFAULT_SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jbHdjcG54dWpjZHF5bHVrdmJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUxOTA1NjQsImV4cCI6MjExMDc2NjU2NH0.wzpgexiNnPx88einTUhUeGVtEt3btAf9LNvo4fi5GsM";
 
       const STORAGE_KEYS = {
         SHIPMENTS: "nsc_v5_shipments",
@@ -1470,7 +1469,7 @@
       const initialKey =
         (storedSettings.sbKey && storedSettings.sbKey.startsWith("eyJ"))
           ? storedSettings.sbKey.trim()
-          : (DEFAULT_SUPABASE_KEY.startsWith("eyJ") ? DEFAULT_SUPABASE_KEY.trim() : (storedSettings.sbKey || "").trim());
+          : DEFAULT_SUPABASE_KEY.trim();
 
       const state = {
         settings: {
@@ -1552,7 +1551,7 @@
 
       async function initSupabase(showToastMsg = false) {
         const url = (state.settings.sbUrl || DEFAULT_SUPABASE_URL).trim();
-        const key = (state.settings.sbKey || "").trim();
+        const key = (state.settings.sbKey || DEFAULT_SUPABASE_KEY).trim();
 
         if (!url || !key || !key.startsWith("eyJ") || !window.supabase || typeof window.supabase.createClient !== "function") {
           setDbDotStatus(false);
@@ -2304,7 +2303,7 @@
 
         chartBox.innerHTML = `
           <div class="h-52 flex items-end justify-between gap-2 pt-6 pb-2 border-b border-slate-200">
-            ${values.map((v) => {
+            ${values.map((v, i) => {
               const pct = Math.max(6, Math.round((v / maxVal) * 100));
               return `
                 <div class="flex-1 flex flex-col items-center justify-end h-full group">
@@ -3463,7 +3462,7 @@
         }).join("");
       }
 
-      window.syncRateModalDraftFromDom = function () {
+      function syncRateModalDraftFromDom() {
         state.rateModalDraftRanges.forEach((rng, idx) => {
           const minEl = document.getElementById(`rng-min-${idx}`);
           const maxEl = document.getElementById(`rng-max-${idx}`);
@@ -3472,7 +3471,7 @@
           if (maxEl) rng.maxKg = parseFloat(maxEl.value) || 0;
           if (prcEl) rng.ratePerKg = parseFloat(prcEl.value) || 0;
         });
-      };
+      }
 
       function renderRateModalDraftList() {
         const listEl = document.getElementById("rate-slabs-editor-list");
@@ -3704,13 +3703,13 @@
       // Settings & SQL
       function loadSettingsForm() {
         document.getElementById("cfg-sb-url").value = state.settings.sbUrl || DEFAULT_SUPABASE_URL;
-        document.getElementById("cfg-sb-key").value = state.settings.sbKey || "";
+        document.getElementById("cfg-sb-key").value = state.settings.sbKey || DEFAULT_SUPABASE_KEY;
         document.getElementById("cfg-logo-url").value = state.settings.logoUrl || DEFAULT_LOGO_URL;
       }
 
       window.saveSupabaseAndLogoSettings = function () {
         state.settings.sbUrl = (document.getElementById("cfg-sb-url").value || "").trim() || DEFAULT_SUPABASE_URL;
-        state.settings.sbKey = (document.getElementById("cfg-sb-key").value || "").trim();
+        state.settings.sbKey = (document.getElementById("cfg-sb-key").value || "").trim() || DEFAULT_SUPABASE_KEY;
         state.settings.logoUrl = (document.getElementById("cfg-logo-url").value || "").trim() || DEFAULT_LOGO_URL;
         saveJsonSafe(STORAGE_KEYS.SETTINGS, state.settings);
         renderAllLogos();
