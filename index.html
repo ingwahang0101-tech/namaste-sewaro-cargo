@@ -997,7 +997,7 @@
             <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
               <div>
                 <h2 class="text-base font-extrabold text-slate-900">Create Scoped Operator</h2>
-                <p class="text-xs text-slate-500">Operators can only view and edit shipments they created themselves.</p>
+                <p class="text-xs text-slate-500">New operators remain pending until secure access is configured.</p>
               </div>
               <form onsubmit="handleCreateOperator(event)" class="space-y-3">
                 <div>
@@ -1006,11 +1006,15 @@
                 </div>
                 <div>
                   <label class="block text-xs font-bold text-slate-700 mb-1">Login ID / Username *</label>
-                  <input type="text" id="op-username" required placeholder="e.g., bikash_ktm" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-mono" />
+                  <input type="text" id="op-username" required minlength="3" maxlength="40" pattern="[A-Za-z0-9_]{3,40}" placeholder="e.g., bikash_ktm" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-mono" />
                 </div>
                 <div>
-                  <label class="block text-xs font-bold text-slate-700 mb-1">Password *</label>
-                  <input type="password" id="op-password" required placeholder="Set operator password" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-mono" />
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Operator Email *</label>
+                  <input type="email" id="op-email" required autocomplete="off" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm" />
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Password (minimum 12 characters) *</label>
+                  <input type="password" id="op-password" required minlength="12" maxlength="72" autocomplete="new-password" placeholder="Set operator password" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-mono" />
                 </div>
                 <button type="submit" class="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold transition">
                   + Create Operator Account
@@ -1019,14 +1023,14 @@
             </div>
 
             <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-              <h2 class="text-base font-extrabold text-slate-900 mb-3">Active Operators</h2>
+              <h2 class="text-base font-extrabold text-slate-900 mb-3">Operator Accounts</h2>
               <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                   <thead>
                     <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-extrabold uppercase text-slate-500">
                       <th class="py-2.5 px-3">Name</th>
                       <th class="py-2.5 px-3">Operator ID</th>
-                      <th class="py-2.5 px-3">Password</th>
+                      <th class="py-2.5 px-3">Status</th>
                       <th class="py-2.5 px-3 text-right">Action</th>
                     </tr>
                   </thead>
@@ -1651,11 +1655,12 @@
             }
           }
 
-          if (oRes.status === "fulfilled" && !oRes.value.error && Array.isArray(oRes.value.data) && oRes.value.data.length > 0) {
+          if (oRes.status === "fulfilled" && !oRes.value.error && Array.isArray(oRes.value.data)) {
             state.operators = oRes.value.data.map(o => ({
               id: o.id,
               fullName: o.full_name,
               username: o.username,
+              active: o.active === true,
               password: undefined
             }));
             saveJsonSafe(STORAGE_KEYS.OPERATORS, state.operators);
@@ -3646,7 +3651,7 @@
           <tr>
             <td class="py-2.5 px-3 font-bold text-slate-900">${escapeHtml(op.fullName)}</td>
             <td class="py-2.5 px-3 font-mono text-xs text-emerald-800">${escapeHtml(op.username)}</td>
-            <td class="py-2.5 px-3 font-mono text-xs">Not stored</td>
+            <td class="py-2.5 px-3 font-mono text-xs">${op.active === true ? "Active" : "Pending / inactive"}</td>
             <td class="py-2.5 px-3 text-right">
               <button type="button" onclick="deleteOperator('${escapeAttr(op.id)}')" class="px-2.5 py-1 rounded-lg text-xs font-bold text-red-600 hover:bg-red-50 border border-red-200">Remove</button>
             </td>
@@ -3656,17 +3661,39 @@
 
       window.handleCreateOperator = async function(e) {
         e.preventDefault();
+        const form = e.currentTarget;
+        const button = form.querySelector('button[type="submit"]');
+        if (button.disabled) return;
+        button.disabled = true;
+        const passwordField = document.getElementById("op-password");
         try {
           const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
           if (sessionError || !sessionData.session) throw new Error("Please log in again.");
           const { data, error } = await supabaseClient.functions.invoke("nsc_operators", {
-            body: {}, headers: { Authorization: "Bearer " + sessionData.session.access_token }
+            body: {
+              action: "create_operator",
+              fullName: document.getElementById("op-fullname").value.trim(),
+              username: document.getElementById("op-username").value.trim().toLowerCase(),
+              email: document.getElementById("op-email").value.trim().toLowerCase(),
+              password: passwordField.value
+            }, headers: { Authorization: "Bearer " + sessionData.session.access_token }
           });
-          if (error) throw error;
-          if (data?.success !== true || data?.message !== "Master Admin verified") throw new Error("Unexpected backend response.");
-          showToast("Master Admin verified - secure backend test passed. No operator created.");
+          if (error) {
+            let message = "Request failed. Check operator records before retrying.";
+            try { const details = await error.context.json(); if (typeof details.error === "string") message = details.error; } catch {}
+            throw new Error(message);
+          }
+          if (data?.success !== true || !data?.operator?.id || data.operator.active !== false) throw new Error("Unexpected backend response. Check records before retrying.");
+          form.reset();
+          state.operators = state.operators.filter(op => op.id !== data.operator.id);
+          state.operators.push({id: data.operator.id, fullName: data.operator.fullName, username: data.operator.username, active: false});
+          renderOperatorsTable();
+          showToast("Operator created - pending activation. Login is not enabled.");
         } catch (err) {
-          showToast("Backend test failed: " + (err?.message || "Unknown error"));
+          showToast(err?.message || "Operator creation failed.");
+        } finally {
+          passwordField.value = "";
+          button.disabled = false;
         }
       };
       window.deleteOperator = function() { showToast("Manage staff accounts in Supabase Authentication."); };
