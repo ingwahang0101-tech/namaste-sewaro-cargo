@@ -186,10 +186,6 @@
           <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
           <span>Dashboard</span>
         </button>
-        <button type="button" onclick="openLoginModal()" class="inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-extrabold bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm border border-emerald-800 transition">
-          <i data-lucide="lock" class="w-4 h-4 text-amber-300"></i>
-          <span>Staff / Admin Login</span>
-        </button>
       </div>
     </div>
   </header>
@@ -277,7 +273,7 @@
       </div>
     </section>
 
-    <!-- Live Tracking Result Band (Hidden on initial page load until searched or clicked) -->
+    <!-- Live Tracking Result Band (Hidden on initial page load until searched) -->
     <section id="tracking-result-section" class="hidden w-full px-4 sm:px-8 lg:px-12 py-8 bg-slate-50/80 border-b border-slate-200">
       <div id="tracking-result-card" class="w-full"></div>
     </section>
@@ -298,10 +294,10 @@
         </div>
         <div class="p-6 rounded-2xl border border-slate-200 bg-white hover:border-emerald-600 transition shadow-xs">
           <div class="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center mb-4">
-            <i data-lucide="package-check" class="w-5 h-5"></i>
+            <i data-lucide="globe" class="w-5 h-5"></i>
           </div>
-          <h3 class="font-bold text-lg text-slate-950 mb-2">Transparent CBM &amp; Weight Rules</h3>
-          <p class="text-sm text-slate-600 leading-relaxed">Calculates <span class="font-mono font-semibold text-emerald-800">L × B × H / 5000</span> per box, picks the higher of CBM or actual weight, and rounds 500g steps consistently.</p>
+          <h3 class="font-bold text-lg text-slate-950 mb-2">End-to-End Customs &amp; Doorstep Handling</h3>
+          <p class="text-sm text-slate-600 leading-relaxed">Smooth customs clearance, careful parcel consolidation, and dependable doorstep delivery across 75+ destinations worldwide.</p>
         </div>
         <div class="p-6 rounded-2xl border border-slate-200 bg-white hover:border-emerald-600 transition shadow-xs">
           <div class="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center mb-4">
@@ -326,9 +322,9 @@
           <p class="text-xs sm:text-sm text-slate-600">Multiple boxes with individual CBM weights and itemized contents under one invoice and separate box labels.</p>
         </div>
         <div class="bg-white p-5 rounded-xl border border-slate-200 border-t-4 border-t-amber-500 shadow-xs">
-          <div class="text-xs font-bold uppercase text-amber-700 mb-1">02 • Perishable / Meat Box</div>
-          <h3 class="font-bold text-slate-950 mb-2">Dedicated Meat Box Packing</h3>
-          <p class="text-xs sm:text-sm text-slate-600">Packed in separate boxes with distinct labels and country-specific meat per-kg rates.</p>
+          <div class="text-xs font-bold uppercase text-amber-700 mb-1">02 • Express Air Freight</div>
+          <h3 class="font-bold text-slate-950 mb-2">Fast &amp; Reliable</h3>
+          <p class="text-xs sm:text-sm text-slate-600">Rapid air dispatch, priority customs handling, and dependable door-to-door delivery from Kathmandu and Malaysia to 75+ destinations worldwide.</p>
         </div>
         <div class="bg-white p-5 rounded-xl border border-slate-200 border-t-4 border-t-emerald-700 shadow-xs">
           <div class="text-xs font-bold uppercase text-emerald-700 mb-1">03 • Customs &amp; Docs</div>
@@ -383,7 +379,12 @@
       </div>
       <div class="pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
         <span>© <span id="footer-year">2026</span> Namaste Sewaro Cargo Service Pvt. Ltd. All rights reserved.</span>
-        <span class="text-emerald-700 font-semibold">KTM to Worldwide Cargo Platform</span>
+        <div class="flex items-center gap-2.5">
+          <span class="text-emerald-700 font-semibold">KTM to Worldwide Cargo Platform</span>
+          <button type="button" onclick="openLoginModal()" title="Staff / Operator Login" aria-label="Staff / Operator Login" class="w-7 h-7 rounded-md text-slate-400 hover:text-emerald-700 hover:bg-slate-100 inline-flex items-center justify-center transition">
+            <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
       </div>
     </footer>
   </main>
@@ -1069,7 +1070,7 @@
   </div>
 
   <!-- ===================================================================== -->
-  <!-- MODAL 1: UNIFIED STAFF / ADMIN LOGIN (No Default Hints)               -->
+  <!-- MODAL 1: UNIFIED STAFF / ADMIN LOGIN                                  -->
   <!-- ===================================================================== -->
   <div id="login-modal" class="fixed inset-0 bg-slate-950/65 z-50 hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md p-6 relative">
@@ -1227,6 +1228,7 @@
     (function () {
       const DEFAULT_LOGO_URL = "https://i.ibb.co/0pvQzGkV/NAMASTE-SEWARO-1.png";
       const DEFAULT_SUPABASE_URL = "https://oclwcpnxujcdqylukvbt.supabase.co";
+      // Pre-configured legacy JWT anon key so fresh devices and live previews connect immediately
       const DEFAULT_SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jbHdjcG54dWpjZHF5bHVrdmJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUxOTA1NjQsImV4cCI6MjExMDc2NjU2NH0.wzpgexiNnPx88einTUhUeGVtEt3btAf9LNvo4fi5GsM";
 
       const STORAGE_KEYS = {
@@ -1469,7 +1471,7 @@
       const initialKey =
         (storedSettings.sbKey && storedSettings.sbKey.startsWith("eyJ"))
           ? storedSettings.sbKey.trim()
-          : DEFAULT_SUPABASE_KEY.trim();
+          : (DEFAULT_SUPABASE_KEY.startsWith("eyJ") ? DEFAULT_SUPABASE_KEY.trim() : (storedSettings.sbKey || "").trim());
 
       const state = {
         settings: {
@@ -1551,7 +1553,7 @@
 
       async function initSupabase(showToastMsg = false) {
         const url = (state.settings.sbUrl || DEFAULT_SUPABASE_URL).trim();
-        const key = (state.settings.sbKey || DEFAULT_SUPABASE_KEY).trim();
+        const key = (state.settings.sbKey || "").trim();
 
         if (!url || !key || !key.startsWith("eyJ") || !window.supabase || typeof window.supabase.createClient !== "function") {
           setDbDotStatus(false);
@@ -2303,7 +2305,7 @@
 
         chartBox.innerHTML = `
           <div class="h-52 flex items-end justify-between gap-2 pt-6 pb-2 border-b border-slate-200">
-            ${values.map((v, i) => {
+            ${values.map((v) => {
               const pct = Math.max(6, Math.round((v / maxVal) * 100));
               return `
                 <div class="flex-1 flex flex-col items-center justify-end h-full group">
@@ -3462,7 +3464,7 @@
         }).join("");
       }
 
-      function syncRateModalDraftFromDom() {
+      window.syncRateModalDraftFromDom = function () {
         state.rateModalDraftRanges.forEach((rng, idx) => {
           const minEl = document.getElementById(`rng-min-${idx}`);
           const maxEl = document.getElementById(`rng-max-${idx}`);
@@ -3471,7 +3473,7 @@
           if (maxEl) rng.maxKg = parseFloat(maxEl.value) || 0;
           if (prcEl) rng.ratePerKg = parseFloat(prcEl.value) || 0;
         });
-      }
+      };
 
       function renderRateModalDraftList() {
         const listEl = document.getElementById("rate-slabs-editor-list");
@@ -3703,13 +3705,13 @@
       // Settings & SQL
       function loadSettingsForm() {
         document.getElementById("cfg-sb-url").value = state.settings.sbUrl || DEFAULT_SUPABASE_URL;
-        document.getElementById("cfg-sb-key").value = state.settings.sbKey || DEFAULT_SUPABASE_KEY;
+        document.getElementById("cfg-sb-key").value = state.settings.sbKey || "";
         document.getElementById("cfg-logo-url").value = state.settings.logoUrl || DEFAULT_LOGO_URL;
       }
 
       window.saveSupabaseAndLogoSettings = function () {
         state.settings.sbUrl = (document.getElementById("cfg-sb-url").value || "").trim() || DEFAULT_SUPABASE_URL;
-        state.settings.sbKey = (document.getElementById("cfg-sb-key").value || "").trim() || DEFAULT_SUPABASE_KEY;
+        state.settings.sbKey = (document.getElementById("cfg-sb-key").value || "").trim();
         state.settings.logoUrl = (document.getElementById("cfg-logo-url").value || "").trim() || DEFAULT_LOGO_URL;
         saveJsonSafe(STORAGE_KEYS.SETTINGS, state.settings);
         renderAllLogos();
