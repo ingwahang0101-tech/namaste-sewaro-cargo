@@ -75,6 +75,15 @@
       background-color: #F0FDF4 !important;
     }
 
+    @keyframes nscLiveStatus {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.55; }
+    }
+    .nsc-live-status { animation: nscLiveStatus 1.8s ease-in-out infinite; }
+    @media (prefers-reduced-motion: reduce) {
+      .nsc-live-status, .live-pulse { animation: none !important; }
+    }
+
     /* Screen Print Preview Sheets */
     .print-sheet-a4 {
       width: 210mm;
@@ -976,7 +985,7 @@
                 </div>
                 <div>
                   <label class="block text-xs font-bold text-slate-700 mb-1">Password *</label>
-                  <input type="text" id="op-password" required placeholder="Set operator password" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-mono" />
+                  <input type="password" id="op-password" required placeholder="Set operator password" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm font-mono" />
                 </div>
                 <button type="submit" class="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold transition">
                   + Create Operator Account
@@ -1086,8 +1095,8 @@
 
       <form onsubmit="handleLoginSubmit(event)" class="space-y-4">
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">User ID</label>
-          <input type="text" id="login-username" required autocomplete="username" placeholder="Enter User ID" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-emerald-700 focus:outline-none text-sm font-medium" />
+          <label class="block text-xs font-bold text-slate-700 mb-1">Email address</label>
+          <input type="email" id="login-username" required autocomplete="username" placeholder="Enter email address" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-emerald-700 focus:outline-none text-sm font-medium" />
         </div>
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">Password</label>
@@ -1461,32 +1470,27 @@
 
       function saveJsonSafe(key, val) {
         try {
-          localStorage.setItem(key, JSON.stringify(val));
+          if (key === STORAGE_KEYS.SETTINGS) localStorage.setItem(key, JSON.stringify({logoUrl: val.logoUrl}));
         } catch (err) {
           console.warn("Storage write error:", err);
         }
       }
 
       const storedSettings = loadJsonSafe(STORAGE_KEYS.SETTINGS, {});
-      const initialKey =
-        (storedSettings.sbKey && storedSettings.sbKey.startsWith("eyJ"))
-          ? storedSettings.sbKey.trim()
-          : (DEFAULT_SUPABASE_KEY.startsWith("eyJ") ? DEFAULT_SUPABASE_KEY.trim() : (storedSettings.sbKey || "").trim());
+      const initialKey = DEFAULT_SUPABASE_KEY;
+      for (const key of Object.values(STORAGE_KEYS)) localStorage.removeItem(key);
 
       const state = {
         settings: {
-          masterPassword: storedSettings.masterPassword || "admin",
           logoUrl: (storedSettings.logoUrl || "").trim() || DEFAULT_LOGO_URL,
-          sbUrl: (storedSettings.sbUrl || "").trim() || DEFAULT_SUPABASE_URL,
+          sbUrl: DEFAULT_SUPABASE_URL,
           sbKey: initialKey
         },
-        session: loadJsonSafe(STORAGE_KEYS.SESSION, null),
-        shipments: loadJsonSafe(STORAGE_KEYS.SHIPMENTS, makeDefaultShipments()),
-        clients: loadJsonSafe(STORAGE_KEYS.CLIENTS, DEFAULT_CLIENTS),
-        rates: loadJsonSafe(STORAGE_KEYS.RATES, DEFAULT_RATES).map(normalizeRateRecord),
-        operators: loadJsonSafe(STORAGE_KEYS.OPERATORS, [
-          { id: "op-1", fullName: "Sajilo Express", username: "sajilo", password: "123" }
-        ]),
+        session: null,
+        shipments: [],
+        clients: [],
+        rates: [],
+        operators: [],
         activePublicTracking: "",
         activeDashboardTab: "overview",
         chartPeriod: "weekly",
@@ -1564,10 +1568,10 @@
         }
 
         try {
-          supabaseClient = window.supabase.createClient(url, key, {
-            auth: { persistSession: false, autoRefreshToken: false }
+          if (!supabaseClient) supabaseClient = window.supabase.createClient(url, key, {
+            auth: { persistSession: false, autoRefreshToken: true }
           });
-          await pullFromSupabase(showToastMsg);
+          if (state.session) await pullFromSupabase(showToastMsg);
         } catch (err) {
           setDbDotStatus(false);
           if (showToastMsg) showToast("Database connection error.");
@@ -1575,7 +1579,7 @@
       }
 
       async function pullFromSupabase(showToastMsg = false) {
-        if (!supabaseClient) {
+        if (!supabaseClient || !state.session) {
           setDbDotStatus(false);
           return;
         }
@@ -1584,7 +1588,7 @@
             supabaseClient.from("nsc_shipments").select("id, payload"),
             supabaseClient.from("nsc_clients").select("id, payload"),
             supabaseClient.from("nsc_rates").select("id, payload"),
-            supabaseClient.from("nsc_operators").select("id, username, full_name, password_hash"),
+            supabaseClient.from("nsc_operators").select("id, username, full_name"),
             supabaseClient.from("nsc_settings").select("key, value, payload")
           ]);
 
@@ -1627,7 +1631,7 @@
               id: o.id,
               fullName: o.full_name,
               username: o.username,
-              password: o.password_hash
+              password: undefined
             }));
             saveJsonSafe(STORAGE_KEYS.OPERATORS, state.operators);
             updated = true;
@@ -1636,7 +1640,6 @@
           if (cfgRes.status === "fulfilled" && !cfgRes.value.error && Array.isArray(cfgRes.value.data) && cfgRes.value.data.length > 0) {
             const row = cfgRes.value.data.find(r => r.key === "master_config") || cfgRes.value.data[0];
             const cfg = row?.payload || row?.value || {};
-            if (cfg.masterPassword) state.settings.masterPassword = cfg.masterPassword;
             if (cfg.logoUrl) state.settings.logoUrl = cfg.logoUrl;
             saveJsonSafe(STORAGE_KEYS.SETTINGS, state.settings);
             renderAllLogos();
@@ -1662,7 +1665,7 @@
       }
 
       async function pushEntityToSupabase(type) {
-        if (!supabaseClient) {
+        if (!supabaseClient || !state.session) {
           setDbDotStatus(false);
           return;
         }
@@ -1709,7 +1712,6 @@
           } else if (type === "rates") {
             const rows = state.rates.map(r => ({
               id: r.id,
-              country: r.country,
               currency: "NPR",
               meat_rate_per_kg: r.meatRate || 0,
               slabs: r.ranges || [],
@@ -1718,17 +1720,9 @@
             }));
             res = await supabaseClient.from("nsc_rates").upsert(rows, { onConflict: "id" });
           } else if (type === "operators") {
-            const rows = state.operators.map(o => ({
-              id: o.id,
-              username: o.username,
-              full_name: o.fullName,
-              password_hash: o.password,
-              active: true
-            }));
-            res = await supabaseClient.from("nsc_operators").upsert(rows, { onConflict: "id" });
+            return;
           } else if (type === "settings") {
             const cfgVal = {
-              masterPassword: state.settings.masterPassword,
               logoUrl: state.settings.logoUrl
             };
             res = await supabaseClient.from("nsc_settings").upsert({
@@ -1914,7 +1908,7 @@
       }
 
       // Public Tracking
-      window.handlePublicTrackSubmit = function (e) {
+      window.handlePublicTrackSubmit = async function (e) {
         e.preventDefault();
         const raw = (document.getElementById("public-tracking-input")?.value || "").trim().toUpperCase();
         if (!raw) {
@@ -1922,9 +1916,15 @@
           return;
         }
         state.activePublicTracking = raw;
-        renderPublicTracking(raw);
+        try {
+          const {data,error} = await supabaseClient.rpc("nsc_public_tracking", {p_tracking:raw});
+          if(error) throw error;
+          publicTrackingResult = data;
+          renderPublicTracking(raw);
+        } catch(err) { publicTrackingResult = null; document.getElementById("tracking-result-section").classList.remove("hidden"); document.getElementById("tracking-result-card").textContent = "Tracking temporarily unavailable. Please try again."; console.error("Tracking request failed", err); }
       };
 
+      let publicTrackingResult = null;
       function renderPublicTracking(awb) {
         const section = document.getElementById("tracking-result-section");
         const container = document.getElementById("tracking-result-card");
@@ -1938,7 +1938,7 @@
         }
 
         section.classList.remove("hidden");
-        const shipment = state.shipments.find(s => s.awb.toUpperCase() === query);
+        const shipment = publicTrackingResult?.tracking_number === query ? publicTrackingResult : null;
 
         if (!shipment) {
           container.innerHTML = `
@@ -1950,20 +1950,9 @@
           return;
         }
 
-        const summary = computeShipmentSummary(shipment);
-        const currentStatus = getCurrentShipmentStatusText(shipment);
-        const maskedSender = maskClientName(shipment.sender?.name);
-        const maskedReceiver = maskClientName(shipment.receiver?.name);
-        const steps = shipment.timelineSteps || [];
-
-        const noteHtml = (shipment.importantNote || "").trim()
-          ? `
-            <div class="mb-6 p-4 rounded-xl bg-amber-50/90 border-l-4 border-amber-500 text-slate-900">
-              <div class="text-xs font-extrabold uppercase tracking-wider text-amber-900 mb-0.5">Important Shipment Notice</div>
-              <div class="text-sm font-semibold text-slate-800">${escapeHtml(shipment.importantNote)}</div>
-            </div>
-          `
-          : "";
+        const currentStatus = shipment.status || "Pending";
+        const importantNote = String(shipment.important_note || "").trim();
+        const steps = Array.isArray(shipment.timeline) ? shipment.timeline : [];
 
         const timelineHtml = steps.map((st, idx) => {
           const isLast = idx === steps.length - 1;
@@ -1974,7 +1963,7 @@
               : "bg-slate-200 text-slate-500";
 
           const badgeHtml = st.active
-            ? `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-900 border border-emerald-300">Active / In Process</span>`
+            ? `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-900 border border-emerald-300 nsc-live-status">Active / In Process</span>`
             : st.completed
               ? `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">Completed</span>`
               : `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-500">Scheduled</span>`;
@@ -2008,40 +1997,25 @@
             <div class="bg-slate-900 text-white px-5 sm:px-7 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <div class="text-[11px] font-bold uppercase tracking-widest text-emerald-400">Live Processing • KTM to Worldwide</div>
-                <div class="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight mt-0.5">${escapeHtml(shipment.awb)}</div>
+                <div class="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight mt-0.5">${escapeHtml(shipment.tracking_number)}</div>
                 <div class="text-xs sm:text-sm text-slate-300 mt-1">
-                  ${escapeHtml(shipment.sender?.city || "Kathmandu")}, ${escapeHtml(shipment.sender?.country || "Nepal")} → ${escapeHtml(shipment.receiver?.city || "")}, ${escapeHtml(shipment.receiver?.country || "")}
+                  ${escapeHtml(shipment.sender?.country || "")} → ${escapeHtml(shipment.receiver?.country || "")}
                 </div>
               </div>
+              ${importantNote ? `<div role="note" class="md:flex-1 md:max-w-xl mx-auto w-full rounded-xl border border-amber-400/50 bg-amber-400/10 px-4 py-3 text-center break-words">
+                <div class="text-[11px] font-extrabold uppercase tracking-widest text-amber-300 mb-1">Important Tracking Note</div>
+                <div class="text-sm sm:text-base font-bold text-amber-100 whitespace-pre-wrap">${escapeHtml(importantNote)}</div>
+              </div>` : ""}
               <div class="flex flex-col sm:items-end gap-1.5">
-                <span class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-extrabold bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/50 shadow-xs">
+                <span class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-extrabold bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/50 shadow-xs nsc-live-status">
                   <span class="w-2 h-2 rounded-full bg-amber-300 live-pulse"></span>
                   <span>${escapeHtml(currentStatus)}</span>
                 </span>
-                <span class="text-xs font-mono text-emerald-300">${summary.totalBoxes} Box(es) • ${summary.totalChargeableKg.toFixed(2)} kg</span>
-              </div>
-            </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 border-b border-slate-200 bg-slate-50/80 divide-y sm:divide-y-0 sm:divide-x divide-slate-200">
-              <div class="p-4">
-                <div class="text-[11px] font-bold uppercase text-slate-500">Shipper</div>
-                <div class="text-sm font-extrabold font-mono text-slate-900 mt-0.5">${escapeHtml(maskedSender)}</div>
-                <div class="text-xs text-slate-500">${escapeHtml(shipment.sender?.country || "")}</div>
-              </div>
-              <div class="p-4">
-                <div class="text-[11px] font-bold uppercase text-slate-500">Receiver</div>
-                <div class="text-sm font-extrabold font-mono text-slate-900 mt-0.5">${escapeHtml(maskedReceiver)}</div>
-                <div class="text-xs text-slate-500">${escapeHtml(shipment.receiver?.country || "")}</div>
-              </div>
-              <div class="p-4">
-                <div class="text-[11px] font-bold uppercase text-slate-500">Dispatch Date</div>
-                <div class="text-sm font-extrabold font-mono text-slate-900 mt-0.5">${escapeHtml(shipment.createdAt || "")}</div>
-                <div class="text-xs text-emerald-700 font-semibold">${summary.meatBoxCount > 0 ? `${summary.meatBoxCount} Meat Box(es)` : "General Cargo"}</div>
               </div>
             </div>
 
             <div class="p-5 sm:p-7">
-              ${noteHtml}
               <div class="flex items-center justify-between mb-4">
                 <h3 class="text-sm sm:text-base font-extrabold text-slate-900">Live Processing Timeline</h3>
                 <span class="text-xs font-bold text-emerald-700">Live Status</span>
@@ -2068,41 +2042,25 @@
         m.classList.remove("flex");
       };
 
-      window.handleLoginSubmit = function (e) {
+      window.handleLoginSubmit = async function(e) {
         e.preventDefault();
-        const user = (document.getElementById("login-username")?.value || "").trim();
-        const pass = (document.getElementById("login-password")?.value || "").trim();
         const errEl = document.getElementById("login-error-msg");
-
-        if (user.toLowerCase() === "admin" && pass === state.settings.masterPassword) {
-          state.session = { role: "admin", username: "admin", fullName: "Master Admin" };
-          saveJsonSafe(STORAGE_KEYS.SESSION, state.session);
-          closeLoginModal();
-          enterDashboard();
-          showToast("Signed in as Master Admin.");
-          return;
-        }
-
-        const op = state.operators.find(o => o.username.toLowerCase() === user.toLowerCase() && o.password === pass);
-        if (op) {
-          state.session = { role: "operator", username: op.username, fullName: op.fullName };
-          saveJsonSafe(STORAGE_KEYS.SESSION, state.session);
-          closeLoginModal();
-          enterDashboard();
-          showToast(`Signed in as ${op.fullName}.`);
-          return;
-        }
-
-        errEl.textContent = "Invalid User ID or Password.";
-        errEl.classList.remove("hidden");
+        const pass = document.getElementById("login-password");
+        try {
+          if (!supabaseClient) await initSupabase();
+          const {data,error} = await supabaseClient.auth.signInWithPassword({email: document.getElementById("login-username").value.trim(), password: pass.value});
+          if (error) throw error;
+          if (data.user.app_metadata?.nsc_role !== "master_admin") { await supabaseClient.auth.signOut(); throw new Error("Staff access not provisioned in this test version."); }
+          state.session = {role:"admin",username:"admin",fullName:"Master Admin"};
+          await pullFromSupabase();
+          closeLoginModal(); enterDashboard();
+        } catch (err) { errEl.textContent = err.message || "Login failed"; errEl.classList.remove("hidden"); }
+        finally { pass.value = ""; }
       };
-
-      window.logoutSession = function () {
-        state.session = null;
-        saveJsonSafe(STORAGE_KEYS.SESSION, null);
-        switchPublicView("home");
-        refreshHeaderSessionButtons();
-        showToast("Logged out.");
+      window.logoutSession = async function() {
+        if (supabaseClient) await supabaseClient.auth.signOut();
+        state.session = null; state.shipments=[]; state.clients=[]; state.rates=[]; state.operators=[];
+        location.reload();
       };
 
       function refreshHeaderSessionButtons() {
@@ -3666,7 +3624,7 @@
           <tr>
             <td class="py-2.5 px-3 font-bold text-slate-900">${escapeHtml(op.fullName)}</td>
             <td class="py-2.5 px-3 font-mono text-xs text-emerald-800">${escapeHtml(op.username)}</td>
-            <td class="py-2.5 px-3 font-mono text-xs">${escapeHtml(op.password)}</td>
+            <td class="py-2.5 px-3 font-mono text-xs">Not stored</td>
             <td class="py-2.5 px-3 text-right">
               <button type="button" onclick="deleteOperator('${escapeAttr(op.id)}')" class="px-2.5 py-1 rounded-lg text-xs font-bold text-red-600 hover:bg-red-50 border border-red-200">Remove</button>
             </td>
@@ -3674,33 +3632,8 @@
         `).join("");
       }
 
-      window.handleCreateOperator = function (e) {
-        e.preventDefault();
-        const fullName = (document.getElementById("op-fullname").value || "").trim();
-        const username = (document.getElementById("op-username").value || "").trim();
-        const password = (document.getElementById("op-password").value || "").trim();
-        if (!fullName || !username || !password) return;
-        if (username.toLowerCase() === "admin" || state.operators.some(o => o.username.toLowerCase() === username.toLowerCase())) {
-          showToast("Operator ID already exists.");
-          return;
-        }
-        state.operators.push({ id: "op-" + Date.now(), fullName, username, password });
-        saveJsonSafe(STORAGE_KEYS.OPERATORS, state.operators);
-        pushEntityToSupabase("operators");
-        document.getElementById("op-fullname").value = "";
-        document.getElementById("op-username").value = "";
-        document.getElementById("op-password").value = "";
-        renderOperatorsTable();
-        showToast(`Created operator ${username}.`);
-      };
-
-      window.deleteOperator = function (id) {
-        state.operators = state.operators.filter(o => o.id !== id);
-        saveJsonSafe(STORAGE_KEYS.OPERATORS, state.operators);
-        pushEntityToSupabase("operators");
-        renderOperatorsTable();
-        showToast("Operator removed.");
-      };
+      window.handleCreateOperator = function(e) { e.preventDefault(); showToast("Operator provisioning is not enabled in this test version."); };
+      window.deleteOperator = function() { showToast("Manage staff accounts in Supabase Authentication."); };
 
       // Settings & SQL
       function loadSettingsForm() {
@@ -3710,8 +3643,8 @@
       }
 
       window.saveSupabaseAndLogoSettings = function () {
-        state.settings.sbUrl = (document.getElementById("cfg-sb-url").value || "").trim() || DEFAULT_SUPABASE_URL;
-        state.settings.sbKey = (document.getElementById("cfg-sb-key").value || "").trim();
+        state.settings.sbUrl = DEFAULT_SUPABASE_URL;
+        state.settings.sbKey = DEFAULT_SUPABASE_KEY;
         state.settings.logoUrl = (document.getElementById("cfg-logo-url").value || "").trim() || DEFAULT_LOGO_URL;
         saveJsonSafe(STORAGE_KEYS.SETTINGS, state.settings);
         renderAllLogos();
@@ -3719,101 +3652,17 @@
         pushEntityToSupabase("settings");
       };
 
-      window.handleChangeMasterPassword = function (e) {
+      window.handleChangeMasterPassword = async function(e) {
         e.preventDefault();
-        const p1 = (document.getElementById("new-master-password").value || "").trim();
-        const p2 = (document.getElementById("confirm-master-password").value || "").trim();
-        if (p1.length < 3 || p1 !== p2) {
-          showToast("Passwords must match and be at least 3 characters.");
-          return;
-        }
-        state.settings.masterPassword = p1;
-        saveJsonSafe(STORAGE_KEYS.SETTINGS, state.settings);
-        pushEntityToSupabase("settings");
-        document.getElementById("new-master-password").value = "";
-        document.getElementById("confirm-master-password").value = "";
-        showToast("Master Admin password updated.");
+        if (!state.session || !supabaseClient) return;
+        const p1 = document.getElementById("new-master-password");
+        const p2 = document.getElementById("confirm-master-password");
+        if (p1.value.length < 12 || p1.value !== p2.value) { showToast("Use matching passwords of at least 12 characters."); return; }
+        const {error} = await supabaseClient.auth.updateUser({password:p1.value});
+        p1.value = p2.value = "";
+        showToast(error ? error.message : "Password updated.");
       };
-
-      const SUPABASE_SQL_SCRIPT = `create table if not exists public.nsc_shipments (
-  id text primary key,
-  tracking_number text unique not null,
-  created_by text,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now(),
-  status text,
-  important_note text default '',
-  sender jsonb not null default '{}'::jsonb,
-  receiver jsonb not null default '{}'::jsonb,
-  boxes jsonb not null default '[]'::jsonb,
-  timeline jsonb not null default '[]'::jsonb,
-  pricing jsonb not null default '{}'::jsonb,
-  payload jsonb not null default '{}'::jsonb
-);
-
-create table if not exists public.nsc_clients (
-  id text primary key,
-  role text default 'both',
-  full_name text not null,
-  country text not null,
-  dial_code text default '',
-  phone text not null,
-  address text default '',
-  city text default '',
-  state text default '',
-  zip_code text default '',
-  id_type text default '',
-  id_number text default '',
-  payload jsonb not null default '{}'::jsonb,
-  updated_at timestamptz default now()
-);
-
-create table if not exists public.nsc_rates (
-  id text primary key,
-  country text unique not null,
-  currency text default 'NPR',
-  meat_rate_per_kg numeric default 0,
-  slabs jsonb not null default '[]'::jsonb,
-  payload jsonb not null default '{}'::jsonb,
-  updated_at timestamptz default now()
-);
-
-create table if not exists public.nsc_operators (
-  id text primary key,
-  username text unique not null,
-  full_name text not null,
-  password_hash text not null,
-  active boolean default true,
-  created_at timestamptz default now()
-);
-
-create table if not exists public.nsc_settings (
-  key text primary key,
-  value jsonb not null default '{}'::jsonb,
-  payload jsonb not null default '{}'::jsonb,
-  updated_at timestamptz default now()
-);
-
-alter table public.nsc_shipments enable row level security;
-alter table public.nsc_clients enable row level security;
-alter table public.nsc_rates enable row level security;
-alter table public.nsc_operators enable row level security;
-alter table public.nsc_settings enable row level security;
-
-drop policy if exists "Allow anon all nsc_shipments" on public.nsc_shipments;
-create policy "Allow anon all nsc_shipments" on public.nsc_shipments for all using (true) with check (true);
-
-drop policy if exists "Allow anon all nsc_clients" on public.nsc_clients;
-create policy "Allow anon all nsc_clients" on public.nsc_clients for all using (true) with check (true);
-
-drop policy if exists "Allow anon all nsc_rates" on public.nsc_rates;
-create policy "Allow anon all nsc_rates" on public.nsc_rates for all using (true) with check (true);
-
-drop policy if exists "Allow anon all nsc_operators" on public.nsc_operators;
-create policy "Allow anon all nsc_operators" on public.nsc_operators for all using (true) with check (true);
-
-drop policy if exists "Allow anon all nsc_settings" on public.nsc_settings;
-create policy "Allow anon all nsc_settings" on public.nsc_settings for all using (true) with check (true);`;
+      const SUPABASE_SQL_SCRIPT = "Database policies are managed separately in Supabase. Do not restore unrestricted policies.";
 
       window.openSqlScriptModal = function () {
         document.getElementById("sql-script-area").value = SUPABASE_SQL_SCRIPT;
