@@ -3654,7 +3654,21 @@
         `).join("");
       }
 
-      window.handleCreateOperator = function(e) { e.preventDefault(); showToast("Operator provisioning is not enabled in this test version."); };
+      window.handleCreateOperator = async function(e) {
+        e.preventDefault();
+        try {
+          const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+          if (sessionError || !sessionData.session) throw new Error("Please log in again.");
+          const { data, error } = await supabaseClient.functions.invoke("nsc_operators", {
+            body: {}, headers: { Authorization: "Bearer " + sessionData.session.access_token }
+          });
+          if (error) throw error;
+          if (data?.success !== true || data?.message !== "Master Admin verified") throw new Error("Unexpected backend response.");
+          showToast("Master Admin verified - secure backend test passed. No operator created.");
+        } catch (err) {
+          showToast("Backend test failed: " + (err?.message || "Unknown error"));
+        }
+      };
       window.deleteOperator = function() { showToast("Manage staff accounts in Supabase Authentication."); };
 
       // Settings & SQL
