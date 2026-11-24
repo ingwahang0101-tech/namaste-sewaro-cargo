@@ -154,7 +154,15 @@
         background: #FFFFFF !important;
       }
     }
-  </style>
+  
+    .print-sheet-a4, .print-sheet-label { font-family: Arial, sans-serif; overflow-wrap: anywhere; line-height: 1.4; }
+    .print-sheet-a4 th { border-top: 1.5px solid #000 !important; border-bottom: 1.5px solid #000 !important; }
+    .print-sheet-a4 tr { break-inside: avoid; }
+    .print-sheet-a4 thead { display: table-header-group; }
+    .print-sheet-a4 td, .print-sheet-a4 th { vertical-align: top; }
+    @media print { .print-sheet-a4 { width: 100%; min-height: 0; padding: 4mm !important; } .print-sheet-label { min-height: 0; padding: 3mm !important; } }
+
+</style>
 </head>
 <body>
 
@@ -1968,9 +1976,7 @@
               ? `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">Completed</span>`
               : `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-500">Scheduled</span>`;
 
-          const customTag = st.type === "custom"
-            ? `<span class="px-2 py-0.5 rounded bg-slate-900 text-amber-300 text-[10px] font-mono font-bold">CUSTOM UPDATE</span>`
-            : "";
+
 
           return `
             <div class="relative flex gap-4 pb-6 ${isLast ? "pb-0" : ""}">
@@ -1982,7 +1988,6 @@
                 <div>
                   <div class="flex items-center flex-wrap gap-1.5">
                     <span class="font-bold text-sm text-slate-900">${escapeHtml(st.label)}</span>
-                    ${customTag}
                   </div>
                   <div class="text-xs font-mono text-slate-500 mt-0.5">${st.time ? "Updated: " + escapeHtml(st.time) : "Awaiting update"}</div>
                 </div>
@@ -3726,11 +3731,11 @@
       function buildBwA4InvoiceHtml(s, summary) {
         const rows = summary.boxBreakdowns.map(b => `
           <tr>
-            <td style="border:1px solid #000;padding:6px;text-align:center;" class="font-logistics-mono">${b.boxNo}</td>
-            <td style="border:1px solid #000;padding:6px;font-weight:700;">${b.boxType === "meat" ? "MEAT / PERISHABLE BOX" : "GENERAL CARGO BOX"}</td>
-            <td style="border:1px solid #000;padding:6px;" class="font-logistics-mono">${b.length} × ${b.breadth} × ${b.height} cm (${b.cbm.toFixed(2)} kg)</td>
-            <td style="border:1px solid #000;padding:6px;text-align:right;" class="font-logistics-mono">${b.actual.toFixed(2)} kg</td>
-            <td style="border:1px solid #000;padding:6px;text-align:right;font-weight:700;" class="font-logistics-mono">${b.chargeableKg.toFixed(2)} kg</td>
+            <td style="border-bottom:1px solid #aaa;padding:9px 6px;text-align:center;" class="font-logistics-mono">${b.boxNo}</td>
+            <td style="border-bottom:1px solid #aaa;padding:9px 6px;font-weight:700;">${b.boxType === "meat" ? "MEAT / PERISHABLE BOX" : "GENERAL CARGO BOX"}</td>
+            <td style="border-bottom:1px solid #aaa;padding:9px 6px;" class="font-logistics-mono">${b.length} × ${b.breadth} × ${b.height} cm (${b.cbm.toFixed(2)} kg)</td>
+            <td style="border-bottom:1px solid #aaa;padding:9px 6px;text-align:right;" class="font-logistics-mono">${b.actual.toFixed(2)} kg</td>
+            <td style="border-bottom:1px solid #aaa;padding:9px 6px;text-align:right;font-weight:700;" class="font-logistics-mono">${b.chargeableKg.toFixed(2)} kg</td>
           </tr>
         `).join("");
 
@@ -3738,26 +3743,26 @@
           <div class="print-sheet-a4 font-logistics" style="color:#000;background:#fff;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:12px;">
               <div>
-                <div style="font-size:18px;font-weight:800;">NAMASTE SEWARO CARGO SERVICE PVT. LTD.</div>
+                <div style="font-size:15px;font-weight:800;">NAMASTE SEWARO CARGO SERVICE PVT. LTD.</div>
                 <div style="font-size:11px;margin-top:2px;">Sinamangal 9 / Tilganga Road 5, Airport, Kathmandu, Nepal • KTM → Worldwide</div>
                 <div style="font-size:11px;">Tel: +977 9813434936 / +977 9825359333</div>
               </div>
               <div style="text-align:right;">
-                <div style="font-size:15px;font-weight:800;border:2px solid #000;padding:4px 10px;">COMMERCIAL INVOICE / AWB</div>
+                <div style="font-size:19px;font-weight:800;padding:4px 0;">COMMERCIAL INVOICE / AWB</div>
                 <div style="font-size:12px;margin-top:4px;" class="font-logistics-mono"><strong>AWB #:</strong> ${escapeHtml(s.awb)}</div>
                 <div style="font-size:11px;" class="font-logistics-mono"><strong>Date:</strong> ${escapeHtml(s.createdAt)} | <strong>Pay:</strong> ${escapeHtml(s.paymentMode)}</div>
               </div>
             </div>
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
-              <div style="border:1px solid #000;padding:8px;">
+              <div style="border-top:1px solid #000;padding:10px 0;">
                 <div style="font-size:11px;font-weight:800;border-bottom:1px solid #000;padding-bottom:3px;margin-bottom:5px;">SHIPPER / SENDER</div>
                 <div style="font-size:12px;font-weight:700;">${escapeHtml(s.sender?.name || "")}</div>
                 <div style="font-size:11px;">${escapeHtml(s.sender?.address || "")}, ${escapeHtml(s.sender?.city || "")}</div>
                 <div style="font-size:11px;">${escapeHtml(s.sender?.country || "")} ${escapeHtml(s.sender?.zip || "")}</div>
                 <div style="font-size:11px;margin-top:3px;" class="font-logistics-mono">Phone: ${escapeHtml(s.sender?.dial || "")} ${escapeHtml(s.sender?.phoneLocal || "")}</div>
               </div>
-              <div style="border:1px solid #000;padding:8px;">
+              <div style="border-top:1px solid #000;padding:10px 0;">
                 <div style="font-size:11px;font-weight:800;border-bottom:1px solid #000;padding-bottom:3px;margin-bottom:5px;">CONSIGNEE / RECEIVER (DOOR-TO-DOOR)</div>
                 <div style="font-size:12px;font-weight:700;">${escapeHtml(s.receiver?.name || "")}</div>
                 <div style="font-size:11px;">${escapeHtml(s.receiver?.address || "")}, ${escapeHtml(s.receiver?.city || "")}</div>
@@ -3769,24 +3774,24 @@
             <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:14px;">
               <thead>
                 <tr>
-                  <th style="border:1px solid #000;padding:6px;width:48px;">Box #</th>
-                  <th style="border:1px solid #000;padding:6px;text-align:left;">Cargo Category</th>
-                  <th style="border:1px solid #000;padding:6px;text-align:left;">Dimensions (L×B×H/5000)</th>
-                  <th style="border:1px solid #000;padding:6px;text-align:right;">Actual Wt</th>
-                  <th style="border:1px solid #000;padding:6px;text-align:right;">Chargeable Wt</th>
+                  <th style="border-bottom:1px solid #aaa;padding:9px 6px;width:48px;">Box #</th>
+                  <th style="border-bottom:1px solid #aaa;padding:9px 6px;text-align:left;">Cargo Category</th>
+                  <th style="border-bottom:1px solid #aaa;padding:9px 6px;text-align:left;">Dimensions (L×B×H/5000)</th>
+                  <th style="border-bottom:1px solid #aaa;padding:9px 6px;text-align:right;">Actual Wt</th>
+                  <th style="border-bottom:1px solid #aaa;padding:9px 6px;text-align:right;">Chargeable Wt</th>
                 </tr>
               </thead>
               <tbody>${rows}</tbody>
             </table>
 
             <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:14px;margin-bottom:18px;">
-              <div style="border:1px solid #000;padding:8px;font-size:10.5px;line-height:1.45;">
+              <div style="border-top:1px solid #000;padding:10px 0;font-size:10.5px;line-height:1.45;">
                 <div style="font-weight:800;margin-bottom:4px;">WEIGHT &amp; CHARGES TERMS</div>
                 <div>• CBM Formula: Length × Breadth × Height / 5000. Higher of CBM or Actual Weight governs.</div>
                 <div>• Rounding: Under 500g fractional weight = 0.5 kg step; over 500g = next 1.0 kg step.</div>
                 <div>• Destination customs duties/taxes (if any) are payable by consignee.</div>
               </div>
-              <div style="border:1px solid #000;padding:8px;font-size:11px;">
+              <div style="border-top:1px solid #000;padding:10px 0;font-size:11px;">
                 <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
                   <span>General (${summary.generalChargeableKg.toFixed(2)} kg × ${summary.genRate}):</span>
                   <span class="font-logistics-mono">NPR ${summary.generalCharge.toLocaleString()}</span>
@@ -3802,7 +3807,7 @@
               </div>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:24px;font-size:11px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:40px;font-size:11px;">
               <div style="border-top:1px solid #000;padding-top:4px;text-align:center;">Shipper Signature</div>
               <div style="border-top:1px solid #000;padding-top:4px;text-align:center;">Authorized Signatory — Kathmandu Office</div>
             </div>
@@ -3816,11 +3821,11 @@
           const itemsRows = (b.items || []).map(it => {
             const tr = `
               <tr>
-                <td style="border:1px solid #000;padding:5px;text-align:center;" class="font-logistics-mono">${sn}</td>
-                <td style="border:1px solid #000;padding:5px;">${escapeHtml(it.description || "Assorted Goods")}</td>
-                <td style="border:1px solid #000;padding:5px;text-align:center;" class="font-logistics-mono">${it.qty || 1}</td>
-                <td style="border:1px solid #000;padding:5px;text-align:right;" class="font-logistics-mono">${(parseFloat(it.priceUsd) || 0).toFixed(2)}</td>
-                <td style="border:1px solid #000;padding:5px;text-align:center;" class="font-logistics-mono">${escapeHtml(it.hsCode || "-")}</td>
+                <td style="border-bottom:1px solid #aaa;padding:8px 5px;text-align:center;" class="font-logistics-mono">${sn}</td>
+                <td style="border-bottom:1px solid #aaa;padding:8px 5px;">${escapeHtml(it.description || "Assorted Goods")}</td>
+                <td style="border-bottom:1px solid #aaa;padding:8px 5px;text-align:center;" class="font-logistics-mono">${it.qty || 1}</td>
+                <td style="border-bottom:1px solid #aaa;padding:8px 5px;text-align:right;" class="font-logistics-mono">${(parseFloat(it.priceUsd) || 0).toFixed(2)}</td>
+                <td style="border-bottom:1px solid #aaa;padding:8px 5px;text-align:center;" class="font-logistics-mono">${escapeHtml(it.hsCode || "-")}</td>
               </tr>
             `;
             sn++;
@@ -3836,11 +3841,11 @@
               <table style="width:100%;border-collapse:collapse;font-size:11px;">
                 <thead>
                   <tr>
-                    <th style="border:1px solid #000;padding:5px;width:44px;">S.N.</th>
-                    <th style="border:1px solid #000;padding:5px;text-align:left;">Item Description</th>
-                    <th style="border:1px solid #000;padding:5px;width:60px;">Qty</th>
-                    <th style="border:1px solid #000;padding:5px;width:85px;text-align:right;">Value (USD)</th>
-                    <th style="border:1px solid #000;padding:5px;width:90px;">HS Code</th>
+                    <th style="border-bottom:1px solid #aaa;padding:8px 5px;width:44px;">S.N.</th>
+                    <th style="border-bottom:1px solid #aaa;padding:8px 5px;text-align:left;">Item Description</th>
+                    <th style="border-bottom:1px solid #aaa;padding:8px 5px;width:60px;">Qty</th>
+                    <th style="border-bottom:1px solid #aaa;padding:8px 5px;width:85px;text-align:right;">Value (USD)</th>
+                    <th style="border-bottom:1px solid #aaa;padding:8px 5px;width:90px;">HS Code</th>
                   </tr>
                 </thead>
                 <tbody>${itemsRows}</tbody>
@@ -3863,11 +3868,11 @@
             </div>
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;font-size:11px;">
-              <div style="border:1px solid #000;padding:6px 8px;">
+              <div style="border-bottom:1px solid #aaa;padding:9px 6px 8px;">
                 <strong>Sender:</strong> ${escapeHtml(s.sender?.name || "")} (${escapeHtml(s.sender?.country || "")})<br/>
                 <span class="font-logistics-mono">${escapeHtml(s.sender?.dial || "")} ${escapeHtml(s.sender?.phoneLocal || "")}</span>
               </div>
-              <div style="border:1px solid #000;padding:6px 8px;">
+              <div style="border-bottom:1px solid #aaa;padding:9px 6px 8px;">
                 <strong>Receiver:</strong> ${escapeHtml(s.receiver?.name || "")} (${escapeHtml(s.receiver?.city || "")}, ${escapeHtml(s.receiver?.country || "")})<br/>
                 <span class="font-logistics-mono">${escapeHtml(s.receiver?.dial || "")} ${escapeHtml(s.receiver?.phoneLocal || "")}</span>
               </div>
@@ -3899,19 +3904,19 @@
 
               <div style="text-align:center;border:1.5px solid #000;padding:4px;margin-bottom:6px;">
                 <div style="font-size:8.5px;font-weight:700;">TRACKING / WAYBILL NUMBER</div>
-                <div style="font-size:16px;font-weight:800;letter-spacing:1px;" class="font-logistics-mono">${escapeHtml(s.awb)}</div>
+                <div style="font-size:24px;font-weight:800;letter-spacing:1px;" class="font-logistics-mono">${escapeHtml(s.awb)}</div>
               </div>
 
-              <div style="border:1px solid #000;padding:5px;margin-bottom:6px;font-size:9.5px;line-height:1.3;">
-                <div style="font-weight:800;font-size:8.5px;text-decoration:underline;">SENDER</div>
+              <div style="border-bottom:1px solid #aaa;padding:8px 5px;margin-bottom:6px;font-size:10px;line-height:1.4;">
+                <div style="font-weight:800;font-size:8.5px;text-decoration:underline;">SHIP FROM / SENDER</div>
                 <div style="font-weight:700;">${escapeHtml(s.sender?.name || "")}</div>
                 <div>${escapeHtml(s.sender?.address || "")}, ${escapeHtml(s.sender?.city || "")}, ${escapeHtml(s.sender?.country || "")}</div>
                 <div class="font-logistics-mono">Tel: ${escapeHtml(s.sender?.dial || "")} ${escapeHtml(s.sender?.phoneLocal || "")}</div>
               </div>
 
-              <div style="border:1.5px solid #000;padding:5px;margin-bottom:6px;font-size:10px;line-height:1.3;">
-                <div style="font-weight:800;font-size:9px;text-decoration:underline;">RECEIVER</div>
-                <div style="font-size:11px;font-weight:800;">${escapeHtml(s.receiver?.name || "")}</div>
+              <div style="border-top:2px solid #000;padding:8px 0;margin-bottom:6px;font-size:12px;line-height:1.4;">
+                <div style="font-weight:800;font-size:9px;text-decoration:underline;">DELIVER TO / CONSIGNEE</div>
+                <div style="font-size:15px;font-weight:800;">${escapeHtml(s.receiver?.name || "")}</div>
                 <div>${escapeHtml(s.receiver?.address || "")}</div>
                 <div style="font-weight:700;">${escapeHtml(s.receiver?.city || "")}, ${escapeHtml(s.receiver?.country || "")} ${escapeHtml(s.receiver?.zip || "")}</div>
                 <div class="font-logistics-mono" style="font-weight:700;">Tel: ${escapeHtml(s.receiver?.dial || "")} ${escapeHtml(s.receiver?.phoneLocal || "")}</div>
